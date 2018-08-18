@@ -15,15 +15,22 @@ ends up being useful to you in a publication:
 Requirements
 ------------
 * PyTorch 0.4.1+
-* NumPy
+* NumPy 1.14.5+
 
 
 Benchmarks
 ----------
-We use the same four datasets as in the original paper (MNIST, TFD, SVHN, and CIFAR-10) and attempt to reproduce the results
-in the paper.
+We plan to use the same four datasets as in the original paper (MNIST, TFD, SVHN, and CIFAR-10) and attempt to reproduce the results in the paper. At present, MNIST, SVHN, and CIFAR10 are supported; TFD is a bit harder to get access to (due to privacy issues regarding the faces, etc.)
 
 Running `python train.py --dataset={'mnist','cifar10','svhn','tfd'}` will download the relevant dataset and store it in
 the appropriate folder the first time you run it; subsequent runs will re-use the downloaded files.
 
 `(TBD: comparisons to original repo & paper results here)`
+
+
+To Do
+-----
++ [ ] Toronto Face Dataset? (See remark about privacy issues above)
++ [ ] Implement affine coupling law
++ [ ] CUDA support
++ [ ] Allow arbitrary partitions of the input in coupling layers?
