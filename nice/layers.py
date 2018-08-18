@@ -20,13 +20,13 @@ def _interleave(first, second, order):
     """
     cols = []
     if order == 'even':
-        for k in range(second.shape[0]):
+        for k in range(second.shape[1]):
             cols.append(first[:,k])
             cols.append(second[:,k])
         if first.shape[1] > second.shape[1]:
             cols.append(first[:,-1])
     else:
-        for k in range(first.shape[0]):
+        for k in range(first.shape[1]):
             cols.append(second[:,k])
             cols.append(first[:,k])
         if second.shape[1] > first.shape[1]:
