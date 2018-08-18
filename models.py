@@ -6,6 +6,18 @@ import torch.nn as nn
 import torch.nn.init as init
 from nice.layers import AdditiveCouplingLayer
 
+def _build_relu_network(latent_dim, hidden_dim, num_layers):
+    """Helper function to construct a ReLU network of varying number of layers."""
+    _modules = [ nn.Linear(latent_dim, hidden_dim), nn.ReLU(), nn.BatchNorm1d(hidden_dim) ]
+    for _ in range(num_layers-2):
+        _modules.append( nn.Linear(hidden_dim, hidden_dim) )
+        _modules.append( nn.ReLU() )
+        _modules.append( nn.BatchNorm1d(hidden_dim) )
+    _modules.append( nn.Linear(hidden_dim, latent_dim) )
+    _modules.append( nn.ReLU() )
+    _modules.append( nn.BatchNorm1d(latent_dim) )
+    return nn.Sequential( *_modules )
+    
 
 class NICEModel(nn.Module):
     """
@@ -19,55 +31,16 @@ class NICEModel(nn.Module):
       five-layer RELUs
     * a diagonal scaling matrix output layer
     """
-    def __init__(self, input_dim, hidden_dim):
+    def __init__(self, input_dim, hidden_dim, num_layers):
         super(NICEModel, self).__init__()
         assert (input_dim % 2 == 0), "[NICEModel] only even input dimensions supported for now"
+        assert (num_layers > 2), "[NICEModel] num_layers must be at least 3"
         self.input_dim = input_dim
         half_dim = int(input_dim / 2)
-        self.layer1 = AdditiveCouplingLayer(
-            input_dim,
-            'even',
-            nn.Sequential(
-                nn.Linear(half_dim, hidden_dim), nn.ReLU(), nn.BatchNorm1d(hidden_dim),
-                nn.Linear(hidden_dim, hidden_dim), nn.ReLU(), nn.BatchNorm1d(hidden_dim),
-                nn.Linear(hidden_dim, hidden_dim), nn.ReLU(), nn.BatchNorm1d(hidden_dim),
-                nn.Linear(hidden_dim, hidden_dim), nn.ReLU(), nn.BatchNorm1d(hidden_dim),
-                nn.Linear(hidden_dim, half_dim), nn.ReLU(), nn.BatchNorm1d(half_dim),
-            )
-        )
-        self.layer2 = AdditiveCouplingLayer(
-            input_dim,
-            'odd',
-            nn.Sequential(
-                nn.Linear(half_dim, hidden_dim), nn.ReLU(), nn.BatchNorm1d(hidden_dim),
-                nn.Linear(hidden_dim, hidden_dim), nn.ReLU(), nn.BatchNorm1d(hidden_dim),
-                nn.Linear(hidden_dim, hidden_dim), nn.ReLU(), nn.BatchNorm1d(hidden_dim),
-                nn.Linear(hidden_dim, hidden_dim), nn.ReLU(), nn.BatchNorm1d(hidden_dim),
-                nn.Linear(hidden_dim, half_dim), nn.ReLU(), nn.BatchNorm1d(half_dim),
-            )
-        )
-        self.layer3 = AdditiveCouplingLayer(
-            input_dim,
-            'even',
-            nn.Sequential(
-                nn.Linear(half_dim, hidden_dim), nn.ReLU(), nn.BatchNorm1d(hidden_dim),
-                nn.Linear(hidden_dim, hidden_dim), nn.ReLU(), nn.BatchNorm1d(hidden_dim),
-                nn.Linear(hidden_dim, hidden_dim), nn.ReLU(), nn.BatchNorm1d(hidden_dim),
-                nn.Linear(hidden_dim, hidden_dim), nn.ReLU(), nn.BatchNorm1d(hidden_dim),
-                nn.Linear(hidden_dim, half_dim), nn.ReLU(), nn.BatchNorm1d(half_dim),
-            )
-        )
-        self.layer4 = AdditiveCouplingLayer(
-            input_dim,
-            'odd',
-            nn.Sequential(
-                nn.Linear(half_dim, hidden_dim), nn.ReLU(), nn.BatchNorm1d(hidden_dim),
-                nn.Linear(hidden_dim, hidden_dim), nn.ReLU(), nn.BatchNorm1d(hidden_dim),
-                nn.Linear(hidden_dim, hidden_dim), nn.ReLU(), nn.BatchNorm1d(hidden_dim),
-                nn.Linear(hidden_dim, hidden_dim), nn.ReLU(), nn.BatchNorm1d(hidden_dim),
-                nn.Linear(hidden_dim, half_dim), nn.ReLU(), nn.BatchNorm1d(half_dim),
-            )
-        )
+        self.layer1 = AdditiveCouplingLayer(input_dim, 'odd', _build_relu_network(half_dim, hidden_dim, num_layers))
+        self.layer2 = AdditiveCouplingLayer(input_dim, 'even', _build_relu_network(half_dim, hidden_dim, num_layers))
+        self.layer3 = AdditiveCouplingLayer(input_dim, 'odd', _build_relu_network(half_dim, hidden_dim, num_layers))
+        self.layer4 = AdditiveCouplingLayer(input_dim, 'even', _build_relu_network(half_dim, hidden_dim, num_layers))
         self.scaling_diag = nn.Parameter(torch.ones(input_dim))
 
         # randomly initialize weights:
@@ -90,8 +63,7 @@ class NICEModel(nn.Module):
             if len(p.shape) > 1:
                 init.kaiming_uniform_(p, nonlinearity='relu')
             else:
-                init.normal_(p, mean=0., std=0.001)
-        
+                init.normal_(p, mean=0., std=0.001)        
 
 
     def forward(self, xs):
@@ -108,14 +80,14 @@ class NICEModel(nn.Module):
         ys = self.layer2(ys)
         ys = self.layer3(ys)
         ys = self.layer4(ys)
-        ys = torch.matmul(ys, torch.diag(self.scaling_diag))
+        ys = torch.matmul(ys, torch.diag(torch.exp(self.scaling_diag)))
         return ys
 
 
     def inverse(self, ys):
         """Invert a set of draws from gaussians"""
         with torch.no_grad():
-            xs = torch.matmul(ys, torch.diag(torch.reciprocal(self.scaling_diag)))
+            xs = torch.matmul(ys, torch.diag(torch.reciprocal(torch.exp(self.scaling_diag)))
             xs = self.layer4.inverse(xs)
             xs = self.layer3.inverse(xs)
             xs = self.layer2.inverse(xs)

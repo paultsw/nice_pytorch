@@ -28,20 +28,20 @@ def gaussian_nice_loss(h, diag, size_average=True):
     if size_average:
         # AVERAGE { (1/2) * \sum^D_i  h_i**2 }
         #         + (D/2) * log(2\pi)
-        #         + \sum^D_i log|S_{ii}|
+        #         + \sum^D_i S_{ii}
         return (
             torch.mean(0.5*torch.sum(torch.pow(h,2),dim=1)) + \
             h.size(1)*0.5*torch.log(torch.tensor(2*np.pi)) + \
-            torch.sum(torch.log(torch.abs(diag)))
+            torch.sum(diag)
         )
     else:
         #   (1/2) * \sum_^N_n \sum^D_i h_i**2
         # + (N*D/2) * log(2\pi)
-        # + N * \sum^D_i log|S_{ii}|
+        # + N * \sum^D_i S_{ii}
         return (
             (0.5*torch.sum(torch.pow(h,2))) + \
             h.size(0)*h.size(1)*0.5*torch.log(torch.tensor(2*np.pi)) + \
-            h.size(0) * torch.sum(torch.log(torch.abs(diag)))
+            h.size(0) * torch.sum(diag)
         )
 
 def logistic_nice_loss(h, diag, size_average=True):
@@ -49,13 +49,13 @@ def logistic_nice_loss(h, diag, size_average=True):
     if size_average:
         return (
             torch.mean(torch.sum(torch.log1p(torch.exp(h)) + torch.log1p(torch.exp(-h)), dim=1)) + \
-            torch.sum(torch.log(torch.abs(diag)))
+            torch.sum(diag)
         )
 
     else:
         return (
             torch.sum(torch.log1p(torch.exp(h)) + torch.log1p(torch.exp(-h))) + \
-            h.size(0) * torch.sum(torch.log(torch.abs(diag)))
+            h.size(0) * torch.sum(diag)
         )
 
 # wrap above loss functions in Modules:
