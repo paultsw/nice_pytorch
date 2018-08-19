@@ -42,23 +42,34 @@ from tqdm import tqdm, trange
 # 1) downloads the corresponding dataset into a folder (if not already downloaded);
 # 2) adds the corresponding whitening & rescaling transforms;
 # 3) returns a dataloader for that dataset.
-
 def _collate_images(batch):
-    # TODO: collect [(input, target)] ==> torch.stack([x for x in inputs], dim=0)
-    return None
+    """Stack images along the first dimension to form a batch and flatten."""
+    return torch.stack([xy[0].view(-1) for xy in batch], dim=0)
+
+def _zca(x):
+    """Perform exact ZCA whitening on a tensor."""
+    return x # TODO: implement ZCA
+
+def _rescale(x, lo, hi):
+    """Rescale a tensor to [lo,hi]."""
+    # TODO: make sure this works for pos/neg x's
+    # TODO: should we scale each dimension separately?
+    return x.div_(torch.max(x))
 
 def load_mnist(train=True, batch_size=1, num_workers=0):
     """Rescale and preprocess MNIST dataset."""
     mnist_transform = torchvision.transforms.Compose([
-        # 1. TODO: uniform noise ~ [0,128]
-        # 2. TODO: rescale to [0,1]
-        # 3. TODO: unravel to 1 dimension
+        # convert PIL image to tensor:
         torchvision.transforms.ToTensor(),
+        # add uniform noise:
+        torchvision.transforms.Lambda(lambda x: (x + torch.rand_like(x).div_(256.))),
+        # rescale to [0,1]:
+        torchvision.transforms.Lambda(lambda x: _rescale(x, 0., 1.))
     ])
     return data.DataLoader(
         torchvision.datasets.MNIST(root="./datasets/mnist", train=train, transform=mnist_transform, download=True),
         batch_size=batch_size,
-        collate_fn=collate_images,
+        collate_fn=_collate_images,
         pin_memory=False,
         drop_last=True
     )
@@ -66,14 +77,18 @@ def load_mnist(train=True, batch_size=1, num_workers=0):
 def load_svhn(train=True, batch_size=1, num_workers=0):
     """Rescale and preprocess SVHN dataset."""
     svhn_transform = torchvision.transforms.Compose([
-        # 1. TODO
-        # 2. TODO
-        # 3. TODO
+        # convert PIL image to tensor:
         torchvision.transforms.ToTensor(),
+        # exact ZCA:
+        torchvision.transforms.Lambda(lambda x: _zca(x)),
+        # add uniform noise:
+        torchvision.transforms.Lambda(lambda x: (x + torch.rand_like(x).div_(256.))),
+        # rescale to [0,1]:
+        torchvision.transforms.Lambda(lambda x: _rescale(x, 0., 1.))
     ])
     _mode = 'train' if train else 'test'
     return data.DataLoader(
-        torchvision.datasets.SVHN(root="./datasets/mnist", split=_mode, transform=svhn_transform, download=True),
+        torchvision.datasets.SVHN(root="./datasets/svhn", split=_mode, transform=svhn_transform, download=True),
         batch_size=batch_size,
         collate_fn=_collate_images,
         pin_memory=False,
@@ -83,10 +98,14 @@ def load_svhn(train=True, batch_size=1, num_workers=0):
 def load_cifar10(train=True, batch_size=1, num_workers=0):
     """Rescale and preprocess CIFAR10 dataset."""
     cifar10_transform = torchvision.transforms.Compose([
-        # 1. TODO
-        # 2. TODO
-        # 3. TODO
+        # convert PIL image to tensor:
         torchvision.transforms.ToTensor(),
+        # exact ZCA:
+        torchvision.transforms.Lambda(lambda x: _zca(x)),
+        # add uniform noise ~ [-1/256, +1/256]:
+        torchvision.transforms.Lambda(lambda x: (x + torch.rand_like(x).div_(128.).add_(-1./256.))),
+        # rescale to [-1,1]:
+        torchvision.transforms.Lambda(lambda x: _rescale(x,-1.,1.))
     ])
     return data.DataLoader(
         torchvision.datasets.CIFAR10(root="./datasets/cifar", train=train, transform=cifar10_transform, download=True),
@@ -107,7 +126,7 @@ def train(args):
     # === choose which dataset to build:
     if args.dataset == 'mnist':
         dataloader_fn = load_mnist
-        input_dim = 24*24
+        input_dim = 28*28
     if args.dataset == 'svhn':
         dataloader_fn = load_svhn
         input_dim = 32*32
@@ -115,8 +134,9 @@ def train(args):
         dataloader_fn = load_cifar10
         input_dim = 32*32
     if args.dataset == 'tfd':
+        raise NotImplementedError("[train] Toronto Faces Dataset unsupported right now. Sorry!")
         dataloader_fn = load_tfd
-        input_dim = None # TODO
+        input_dim = None
         
     # === choose which loss function to build:
     if args.prior == 'logistic':
@@ -124,22 +144,26 @@ def train(args):
     else:
         loss_fn = GaussianPriorNICELoss(size_average=True)
     
-    # === build model:
+    # === build model & optimizer:
     model = NICEModel(input_dim, args.nhidden, args.nlayers)
+    opt = optim.Adam(model.parameters(), lr=args.lr, betas=(args.beta1,args.beta2), eps=args.eps)
 
     # === train over a number of epochs; perform validation after each:
-    for _ in trange(args.num_epochs):
+    for t in range(args.num_epochs):
         dataloader = dataloader_fn(train=True, batch_size=args.batch_size)
-
-        # [[[ TODO: train/save for one epoch ]]]
+        for inputs in tqdm(dataloader):
+            opt.zero_grad()
+            loss_fn(model(inputs), model.scaling_diag).backward()
+            opt.step()
         
-        # save model to disk and delete dataloader to save memory::
-        torch.save(None)
+        # save model to disk and delete dataloader to save memory:
+        _fn = "nice.{0}.l_{1}.h_{2}.p_{3}.e_{4}.cpu.pt".format(args.dataset, args.nlayers, args.nhiddens, args.prior, t)
+        torch.save(model.state_dict(), os.path.join(args.savedir, _fn))
         del dataloader
         
         # perform validation loop:
         avg_val_loss = validate(model, dataloader_fn, loss_fn)
-        # TODO: print validation loss?
+        print("* Epoch {0} / Validation Loss: {1}".format(t,avg_val_loss))
 
 # ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
 # Validation loop: set gradient-tracking off with model in eval mode:
@@ -173,33 +197,30 @@ if __name__ == '__main__':
     # configuration settings:
     parser.add_argument("--dataset", required=True, dest='dataset', choices=('tfd', 'cifar10', 'svhn', 'mnist'),
                         help="Dataset to train the NICE model on.")
-    parser.add_argument("--epochs", dest='num_epochs', default=1500,
+    parser.add_argument("--epochs", dest='num_epochs', default=1500, type=int,
                         help="Number of epochs to train on. [1500]")
-    parser.add_argument("--batch_size", dest="batch_size", default=16,
-                        help="Number of examples per batch.")
+    parser.add_argument("--batch_size", dest="batch_size", default=16, type=int,
+                        help="Number of examples per batch. [16]")
     parser.add_argument("--savedir", dest='savedir', default="./saved_models",
                         help="Where to save the trained model. [./saved_models]")
     # model settings:
-    parser.add_argument("--nonlinearity_layers", dest='nlayers', default=5,
-                        help="...")
-    parser.add_argument("--nonlinearity_hiddens", dest='nhidden', default=1000,
-                        help="...")
+    parser.add_argument("--nonlinearity_layers", dest='nlayers', default=5, type=int,
+                        help="Number of layers in the nonlinearity. [5]")
+    parser.add_argument("--nonlinearity_hiddens", dest='nhidden', default=1000, type=int,
+                        help="Hidden size of inner layers of nonlinearity. [1000]")
     parser.add_argument("--prior", choices=('logistic', 'prior'), default="logistic",
-                        help="...")
+                        help="Prior distribution of latent space components. [logistic]")
     # optimization settings:
-    parser.add_argument("--lr", default=0.001, dest='lr',
+    parser.add_argument("--lr", default=0.001, dest='lr', type=float,
                         help="Learning rate for ADAM optimizer. [0.001]")
-    parser.add_argument("--beta1", default=0.9,  dest='beta1',
+    parser.add_argument("--beta1", default=0.9,  dest='beta1', type=float,
                         help="Momentum for ADAM optimizer. [0.9]")
-    parser.add_argument("--beta2", default=0.01, dest='beta2',
+    parser.add_argument("--beta2", default=0.01, dest='beta2', type=float,
                         help="Beta2 for ADAM optimizer. [0.01]")
-    parser.add_argument("--eps", default=0.0001, dest='eps',
+    parser.add_argument("--eps", default=0.0001, dest='eps', type=float,
                         help="Epsilon for ADAM optimizer. [0.0001]")
-    parser.add_argument("--lambda", default=1.0, dest='lambda',
+    parser.add_argument("--lambda", default=1.0, dest='lambda', type=float,
                         help="L1 weight decay coefficient. [1.0]")
     args = parser.parse_args()
-    # ----- run training loop over several epochs & save:
+    # ----- run training loop over several epochs & save models for each epoch:
     model = train(args)
-    _now = "2018_08_18_05h11m" # TODO: datetime
-    _save_name = "nice.{0}.{1}.{2}.{3}.{4}.cpu.pt".format(args.dataset, args.epochs, args.nlayers, args.nhiddens, args.prior, _now)
-    torch.save(model.state_dict, os.path.join(args.savedir, _save_name)

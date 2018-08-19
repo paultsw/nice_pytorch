@@ -16,6 +16,7 @@ Requirements
 ------------
 * PyTorch 0.4.1+
 * NumPy 1.14.5+
+* tqdm 4.15.0+ (though any version should work --- we primarily just use the main tqdm and trange wrappers.)
 
 
 Benchmarks
@@ -28,9 +29,16 @@ the appropriate folder the first time you run it; subsequent runs will re-use th
 `(TBD: comparisons to original repo & paper results here)`
 
 
+Status
+------
+* Training on MNIST currently works. Benchmarks forthcoming (once I find the time to run this for 1500 epochs...)
+
 To Do
 -----
-+ [ ] Toronto Face Dataset? (See remark about privacy issues above)
-+ [ ] Implement affine coupling law
-+ [ ] CUDA support
-+ [ ] Allow arbitrary partitions of the input in coupling layers?
++ [ ] [Priority] Implement ZCA
++ [ ] [Priority] Training loop for CIFAR10, SVHN datasets.
++ [ ] [Priority] CUDA support
++ [ ] [Priority] Implement sampling & inpainting from trained model.
++ [ ] [Medium] Toronto Face Dataset? (See remark about privacy issues above)
++ [ ] [Enhancement] Implement affine coupling law
++ [ ] [Enhancement] Allow arbitrary partitions of the input in coupling layers?

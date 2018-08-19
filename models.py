@@ -87,7 +87,7 @@ class NICEModel(nn.Module):
     def inverse(self, ys):
         """Invert a set of draws from gaussians"""
         with torch.no_grad():
-            xs = torch.matmul(ys, torch.diag(torch.reciprocal(torch.exp(self.scaling_diag)))
+            xs = torch.matmul(ys, torch.diag(torch.reciprocal(torch.exp(self.scaling_diag))))
             xs = self.layer4.inverse(xs)
             xs = self.layer3.inverse(xs)
             xs = self.layer2.inverse(xs)
