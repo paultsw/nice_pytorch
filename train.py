@@ -168,7 +168,7 @@ def train(args):
         del dataloader
         
         # perform validation loop:
-        avg_val_loss = validate(model, dataloader_fn, loss_fn)
+        avg_val_loss = validate(model, dataloader_fn, nice_loss_fn)
         print(">>> Validation Loss: {0}".format(avg_val_loss))
 
 # ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
