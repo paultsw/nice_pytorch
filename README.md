@@ -27,7 +27,7 @@ Running `python make_datasets.py` will download the relevant dataset and store i
 you run it; subsequent runs will not re-download the datasets if they already exist. Additionally, the ZCA matrices will be
 computed for the relevant datasets that require them (CIFAR10, SVHN).
 
-`(TBD: comparisons to original repo & paper results here)`
+`(TBD: comparisons to original repo & paper results here --- once I find the time to run on 1500 epochs.)`
 
 
 License
@@ -37,18 +37,14 @@ The license for this repository is the 3-clause BSD, as in the theano-based impl
 
 Status
 ------
-* Training on MNIST, CIFAR10, SVHN currently work; trained models can be sampled via `python sample.py {...}`.
+* Training on MNIST, CIFAR10, SVHN currently work; trained models can be sampled via `python sample.py [--args]`.
 * Training on GPU currently works. (Sampling is still CPU-only, but this is by design.)
 * Benchmarks are still forthcoming.
 * Toronto Face Dataset support is still something I'm considering if I can find a place to download it.
 
-To Do
------
-+ [X] [Priority] Implement ZCA
-+ [X] [Priority] Training loop for CIFAR10, SVHN datasets.
-+ [X] [Priority] Implement sampling from trained model.
-+ [X] [Medium] CUDA support
-+ [ ] [Medium] Implement inpainting from trained model.
-+ [ ] [Enhancement] Toronto Face Dataset? (See remark about privacy issues above)
-+ [ ] [Enhancement] Implement affine coupling law
-+ [ ] [Enhancement] Allow arbitrary partitions of the input in coupling layers?
+Future To-Do List
+-----------------
++ Implement inpainting from trained model.
++ Toronto Face Dataset? (See remark about privacy issues above)
++ Implement affine coupling law
++ Allow arbitrary partitions of the input in coupling layers?
