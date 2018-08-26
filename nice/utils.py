@@ -38,7 +38,7 @@ def rescale(x, lo, hi):
 def l1_norm(mdl, include_bias=True):
     """Compute L1 norm on all the weights of mdl."""
     if include_bias:
-        _norm = torch.tensor(0.0)
+        _norm = torch.tensor(0.0, device=mdl.device)
         for w in mdl.parameters():
             _norm = _norm + w.norm(p=1)
         return _norm
