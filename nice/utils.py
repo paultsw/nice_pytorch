@@ -35,10 +35,10 @@ def rescale(x, lo, hi):
     return x
 
 
-def l1_norm(mdl, include_bias=True):
+def l1_norm(mdl, include_bias=True, device=(torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu'))):
     """Compute L1 norm on all the weights of mdl."""
     if include_bias:
-        _norm = torch.tensor(0.0, device=mdl.device)
+        _norm = torch.tensor(0.0, device=device)
         for w in mdl.parameters():
             _norm = _norm + w.norm(p=1)
         return _norm
