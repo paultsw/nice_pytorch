@@ -29,9 +29,10 @@ import torch.optim as optim
 import torch
 import torch.utils.data as data
 import numpy as np
-# models/losses:
-from models import NICEModel
+# models/losses/image utils:
+from nice.models import NICEModel
 from nice.loss import LogisticPriorNICELoss, GaussianPriorNICELoss
+from nice.utils import rescale, l1_norm
 # python/os utils:
 import argparse
 import os
@@ -42,75 +43,75 @@ from tqdm import tqdm, trange
 # 1) downloads the corresponding dataset into a folder (if not already downloaded);
 # 2) adds the corresponding whitening & rescaling transforms;
 # 3) returns a dataloader for that dataset.
-def _collate_images(batch):
-    """Stack images along the first dimension to form a batch and flatten."""
-    return torch.stack([xy[0].view(-1) for xy in batch], dim=0)
-
-def _zca(x):
-    """Perform exact ZCA whitening on a tensor."""
-    return x # TODO: implement ZCA
-
-def _rescale(x, lo, hi):
-    """Rescale a tensor to [lo,hi]."""
-    # TODO: make sure this works for pos/neg x's
-    # TODO: should we scale each dimension separately?
-    return x.div_(torch.max(x))
 
 def load_mnist(train=True, batch_size=1, num_workers=0):
     """Rescale and preprocess MNIST dataset."""
     mnist_transform = torchvision.transforms.Compose([
         # convert PIL image to tensor:
         torchvision.transforms.ToTensor(),
+        # flatten:
+        torchvision.transforms.Lambda(lambda x: x.view(-1)),
         # add uniform noise:
         torchvision.transforms.Lambda(lambda x: (x + torch.rand_like(x).div_(256.))),
         # rescale to [0,1]:
-        torchvision.transforms.Lambda(lambda x: _rescale(x, 0., 1.))
+        torchvision.transforms.Lambda(lambda x: rescale(x, 0., 1.))
     ])
     return data.DataLoader(
-        torchvision.datasets.MNIST(root="./datasets/mnist", train=train, transform=mnist_transform, download=True),
+        torchvision.datasets.MNIST(root="./datasets/mnist", train=train, transform=mnist_transform, download=False),
         batch_size=batch_size,
-        collate_fn=_collate_images,
         pin_memory=False,
         drop_last=True
     )
 
 def load_svhn(train=True, batch_size=1, num_workers=0):
     """Rescale and preprocess SVHN dataset."""
+    # check if ZCA matrix exists on dataset yet:
+    assert os.path.exists("./datasets/svhn/zca_matrix.pt"), \
+        "[load_svhn] ZCA whitening matrix not built! Run `python make_dataset.py` first."
+    zca_matrix = torch.load("./datasets/svhn/zca_matrix.pt")
+
     svhn_transform = torchvision.transforms.Compose([
         # convert PIL image to tensor:
         torchvision.transforms.ToTensor(),
-        # exact ZCA:
-        torchvision.transforms.Lambda(lambda x: _zca(x)),
+        # flatten:
+        torchvision.transforms.Lambda(lambda x: x.view(-1)),
         # add uniform noise:
         torchvision.transforms.Lambda(lambda x: (x + torch.rand_like(x).div_(256.))),
         # rescale to [0,1]:
-        torchvision.transforms.Lambda(lambda x: _rescale(x, 0., 1.))
+        torchvision.transforms.Lambda(lambda x: rescale(x, 0., 1.)),
+        # exact ZCA:
+        torchvision.transforms.LinearTransformation(zca_matrix)
     ])
     _mode = 'train' if train else 'test'
     return data.DataLoader(
-        torchvision.datasets.SVHN(root="./datasets/svhn", split=_mode, transform=svhn_transform, download=True),
+        torchvision.datasets.SVHN(root="./datasets/svhn", split=_mode, transform=svhn_transform, download=False),
         batch_size=batch_size,
-        collate_fn=_collate_images,
         pin_memory=False,
         drop_last=True
     )
 
 def load_cifar10(train=True, batch_size=1, num_workers=0):
     """Rescale and preprocess CIFAR10 dataset."""
+    # check if ZCA matrix exists on dataset yet:
+    assert os.path.exists("./datasets/cifar/zca_matrix.pt"), \
+        "[load_cifar10] ZCA whitening matrix not built! Run `python make_datasets.py` first."
+    zca_matrix = torch.load("./datasets/cifar/zca_matrix.pt")
+
     cifar10_transform = torchvision.transforms.Compose([
         # convert PIL image to tensor:
         torchvision.transforms.ToTensor(),
-        # exact ZCA:
-        torchvision.transforms.Lambda(lambda x: _zca(x)),
+        # flatten:
+        torchvision.transforms.Lambda(lambda x: x.view(-1)),
         # add uniform noise ~ [-1/256, +1/256]:
         torchvision.transforms.Lambda(lambda x: (x + torch.rand_like(x).div_(128.).add_(-1./256.))),
         # rescale to [-1,1]:
-        torchvision.transforms.Lambda(lambda x: _rescale(x,-1.,1.))
+        torchvision.transforms.Lambda(lambda x: rescale(x,-1.,1.)),
+        # exact ZCA:
+        torchvision.transforms.LinearTransformation(zca_matrix)
     ])
     return data.DataLoader(
-        torchvision.datasets.CIFAR10(root="./datasets/cifar", train=train, transform=cifar10_transform, download=True),
+        torchvision.datasets.CIFAR10(root="./datasets/cifar", train=train, transform=cifar10_transform, download=False),
         batch_size=batch_size,
-        collate_fn=_collate_images,
         pin_memory=False,
         drop_last=True
     )
@@ -129,41 +130,46 @@ def train(args):
         input_dim = 28*28
     if args.dataset == 'svhn':
         dataloader_fn = load_svhn
-        input_dim = 32*32
+        input_dim = 32*32*3
     if args.dataset == 'cifar10':
         dataloader_fn = load_cifar10
-        input_dim = 32*32
+        input_dim = 32*32*3
     if args.dataset == 'tfd':
         raise NotImplementedError("[train] Toronto Faces Dataset unsupported right now. Sorry!")
         dataloader_fn = load_tfd
         input_dim = None
-        
-    # === choose which loss function to build:
-    if args.prior == 'logistic':
-        loss_fn = LogisticPriorNICELoss(size_average=True)
-    else:
-        loss_fn = GaussianPriorNICELoss(size_average=True)
-    
+
     # === build model & optimizer:
     model = NICEModel(input_dim, args.nhidden, args.nlayers)
     opt = optim.Adam(model.parameters(), lr=args.lr, betas=(args.beta1,args.beta2), eps=args.eps)
 
+    # === choose which loss function to build:
+    if args.prior == 'logistic':
+        nice_loss_fn = LogisticPriorNICELoss(size_average=True)
+    else:
+        nice_loss_fn = GaussianPriorNICELoss(size_average=True)
+    def loss_fn(fx):
+        """Compute NICE loss w/r/t a prior and add L1 regularization."""
+        return nice_loss_fn(fx, model.scaling_diag) + args.lmbda*l1_norm(model, include_bias=True)
+
     # === train over a number of epochs; perform validation after each:
     for t in range(args.num_epochs):
+        print("* Epoch {0}:".format(t))
         dataloader = dataloader_fn(train=True, batch_size=args.batch_size)
-        for inputs in tqdm(dataloader):
+        for inputs, _ in tqdm(dataloader):
             opt.zero_grad()
-            loss_fn(model(inputs), model.scaling_diag).backward()
+            loss_fn(model(inputs)).backward()
             opt.step()
         
         # save model to disk and delete dataloader to save memory:
-        _fn = "nice.{0}.l_{1}.h_{2}.p_{3}.e_{4}.cpu.pt".format(args.dataset, args.nlayers, args.nhiddens, args.prior, t)
+        _fn = "nice.{0}.l_{1}.h_{2}.p_{3}.e_{4}.cpu.pt".format(args.dataset, args.nlayers, args.nhidden, args.prior, t)
         torch.save(model.state_dict(), os.path.join(args.savedir, _fn))
+        print(">>> Saved file: {0}".format(_fn))
         del dataloader
         
         # perform validation loop:
         avg_val_loss = validate(model, dataloader_fn, loss_fn)
-        print("* Epoch {0} / Validation Loss: {1}".format(t,avg_val_loss))
+        print(">>> Validation Loss: {0}".format(avg_val_loss))
 
 # ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
 # Validation loop: set gradient-tracking off with model in eval mode:
@@ -173,12 +179,12 @@ def validate(model, dataloader_fn, loss_fn):
     model.eval()
 
     # build dataloader in eval mode:
-    dataloader = dataloader_fn(train=True, batch_size=args.batch_size)
+    dataloader = dataloader_fn(train=False, batch_size=args.batch_size)
 
     # turn gradient-tracking off (for speed) during validation:
     validation_losses = []
     with torch.no_grad():
-        for inputs in dataloader:
+        for inputs,_ in tqdm(dataloader):
             validation_losses.append(loss_fn(model(inputs), model.scaling_diag).item())
     
     # delete dataloader to save memory:
@@ -219,7 +225,7 @@ if __name__ == '__main__':
                         help="Beta2 for ADAM optimizer. [0.01]")
     parser.add_argument("--eps", default=0.0001, dest='eps', type=float,
                         help="Epsilon for ADAM optimizer. [0.0001]")
-    parser.add_argument("--lambda", default=1.0, dest='lambda', type=float,
+    parser.add_argument("--lambda", default=1.0, dest='lmbda', type=float,
                         help="L1 weight decay coefficient. [1.0]")
     args = parser.parse_args()
     # ----- run training loop over several epochs & save models for each epoch:

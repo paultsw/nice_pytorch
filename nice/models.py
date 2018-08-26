@@ -4,7 +4,7 @@ Implementation of models from paper.
 import torch
 import torch.nn as nn
 import torch.nn.init as init
-from nice.layers import AdditiveCouplingLayer
+from .layers import AdditiveCouplingLayer
 
 def _build_relu_network(latent_dim, hidden_dim, num_layers):
     """Helper function to construct a ReLU network of varying number of layers."""

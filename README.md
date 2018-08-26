@@ -23,8 +23,9 @@ Benchmarks
 ----------
 We plan to use the same four datasets as in the original paper (MNIST, TFD, SVHN, and CIFAR-10) and attempt to reproduce the results in the paper. At present, MNIST, SVHN, and CIFAR10 are supported; TFD is a bit harder to get access to (due to privacy issues regarding the faces, etc.)
 
-Running `python train.py --dataset={'mnist','cifar10','svhn','tfd'}` will download the relevant dataset and store it in
-the appropriate folder the first time you run it; subsequent runs will re-use the downloaded files.
+Running `python make_datasets.py` will download the relevant dataset and store it in the appropriate directory the first time
+you run it; subsequent runs will not re-download the datasets if they already exist. Additionally, the ZCA matrices will be
+computed for the relevant datasets that require them (CIFAR10, SVHN).
 
 `(TBD: comparisons to original repo & paper results here)`
 
@@ -36,14 +37,17 @@ The license for this repository is the 3-clause BSD, as in the theano-based impl
 
 Status
 ------
-* Training on MNIST currently works. Benchmarks forthcoming (once I find the time to run this for 1500 epochs...)
+* Training on MNIST, CIFAR10, SVHN currently work; trained models can be sampled via `python sample.py {...}`.
+* Benchmarks are still forthcoming.
+* Toronto Face Dataset support is still something I'm considering if I can find a place to download it.
 
 To Do
 -----
-+ [ ] [Priority] Implement ZCA
-+ [ ] [Priority] Training loop for CIFAR10, SVHN datasets.
-+ [ ] [Priority] CUDA support
-+ [ ] [Priority] Implement sampling & inpainting from trained model.
++ [X] [Priority] Implement ZCA
++ [X] [Priority] Training loop for CIFAR10, SVHN datasets.
++ [X] [Priority] Implement sampling from trained model.
++ [ ] [Medium] CUDA support
++ [ ] [Medium] Implement inpainting from trained model.
 + [ ] [Medium] Toronto Face Dataset? (See remark about privacy issues above)
 + [ ] [Enhancement] Implement affine coupling law
 + [ ] [Enhancement] Allow arbitrary partitions of the input in coupling layers?
