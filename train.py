@@ -150,11 +150,10 @@ def train(args):
     # === build model & optimizer:
     model = NICEModel(input_dim, args.nhidden, args.nlayers).to(DEVICE)
     if (args.model_path is not None):
-        try:
-            assert(os.path.exists(args.model_path)), "[train] model does not exist at specified location"
-            model.load_state_dict(torch.load(args.model_path, map_location=('cuda' if CUDA else 'cpu')))
-        except:
-            print("[train] Could not load pretrained model! Continuing training with fresh model...")
+        assert(os.path.exists(args.model_path)), "[train] model does not exist at specified location"
+        model.load_state_dict(torch.load(args.model_path, map_location=('cuda' if CUDA else 'cpu')))
+        #except:
+        #    print("[train] Could not load pretrained model! Continuing training with fresh model...")
     opt = optim.Adam(model.parameters(), lr=args.lr, betas=(args.beta1,args.beta2), eps=args.eps)
 
     # === choose which loss function to build:
