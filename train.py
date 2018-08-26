@@ -149,6 +149,11 @@ def train(args):
 
     # === build model & optimizer:
     model = NICEModel(input_dim, args.nhidden, args.nlayers).to(DEVICE)
+    if (args.model_path is not None):
+        try:
+            model.load_state_dict(torch.load(args.model_path, map_location=DEVICE))
+        except:
+            print("[train] Could not load pretrained model! Continuing training with fresh model...")
     opt = optim.Adam(model.parameters(), lr=args.lr, betas=(args.beta1,args.beta2), eps=args.eps)
 
     # === choose which loss function to build:
@@ -228,6 +233,8 @@ if __name__ == '__main__':
                         help="Hidden size of inner layers of nonlinearity. [1000]")
     parser.add_argument("--prior", choices=('logistic', 'prior'), default="logistic",
                         help="Prior distribution of latent space components. [logistic]")
+    parser.add_argument("--model_path", dest='model_path', default=None, type=str,
+                        help="Continue from pretrained model. [None]")
     # optimization settings:
     parser.add_argument("--lr", default=0.001, dest='lr', type=float,
                         help="Learning rate for ADAM optimizer. [0.001]")
