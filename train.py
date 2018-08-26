@@ -68,7 +68,7 @@ def load_mnist(train=True, batch_size=1, num_workers=0):
         torchvision.datasets.MNIST(root="./datasets/mnist", train=train, transform=mnist_transform, download=False),
         batch_size=batch_size,
         pin_memory=CUDA,
-        drop_last=True
+        drop_last=train
     )
 
 def load_svhn(train=True, batch_size=1, num_workers=0):
@@ -95,7 +95,7 @@ def load_svhn(train=True, batch_size=1, num_workers=0):
         torchvision.datasets.SVHN(root="./datasets/svhn", split=_mode, transform=svhn_transform, download=False),
         batch_size=batch_size,
         pin_memory=CUDA,
-        drop_last=True
+        drop_last=train
     )
 
 def load_cifar10(train=True, batch_size=1, num_workers=0):
@@ -121,7 +121,7 @@ def load_cifar10(train=True, batch_size=1, num_workers=0):
         torchvision.datasets.CIFAR10(root="./datasets/cifar", train=train, transform=cifar10_transform, download=False),
         batch_size=batch_size,
         pin_memory=CUDA,
-        drop_last=True
+        drop_last=train
     )
 
 def load_tfd(train=True, batch_size=1, num_workers=0):
