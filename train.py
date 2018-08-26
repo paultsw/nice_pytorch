@@ -177,8 +177,8 @@ def train(args):
         del dataloader
         
         # perform validation loop:
-        avg_val_loss = validate(model, dataloader_fn, nice_loss_fn)
-        print(">>> Validation Loss: {0}".format(avg_val_loss))
+        vmin, vmed, vmean, vmax = validate(model, dataloader_fn, nice_loss_fn)
+        print(">>> Validation Loss Statistics: min={0}, med={1}, mean={2}, max={3}".format(vmin,vmed,vmean,vmax))
 
 # ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
 # Validation loop: set gradient-tracking off with model in eval mode:
@@ -202,8 +202,11 @@ def validate(model, dataloader_fn, loss_fn):
     # set model back in train mode:
     model.train()
 
-    # return average validation loss:
-    return np.mean(validation_losses)
+    # return validation loss summary statistics:
+    return (np.amin(validation_losses),
+            np.median(validation_losses),
+            np.mean(validation_losses),
+            np.amax(validation_losses))
 
 # ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
 if __name__ == '__main__':
