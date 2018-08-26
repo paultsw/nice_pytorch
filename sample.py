@@ -45,7 +45,7 @@ def sample(args):
     # build model & load state dict:
     nice = NICEModel(input_dim, args.nhidden, args.nlayers)
     if args.model_path is not None:
-        nice.load_state_dict(torch.load(args.model_path))
+        nice.load_state_dict(torch.load(args.model_path, map_location='cpu'))
     nice.eval()
     
     # sample a batch:

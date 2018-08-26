@@ -38,6 +38,7 @@ The license for this repository is the 3-clause BSD, as in the theano-based impl
 Status
 ------
 * Training on MNIST, CIFAR10, SVHN currently work; trained models can be sampled via `python sample.py {...}`.
+* Training on GPU currently works. (Sampling is still CPU-only, but this is by design.)
 * Benchmarks are still forthcoming.
 * Toronto Face Dataset support is still something I'm considering if I can find a place to download it.
 
@@ -46,8 +47,8 @@ To Do
 + [X] [Priority] Implement ZCA
 + [X] [Priority] Training loop for CIFAR10, SVHN datasets.
 + [X] [Priority] Implement sampling from trained model.
-+ [ ] [Medium] CUDA support
++ [X] [Medium] CUDA support
 + [ ] [Medium] Implement inpainting from trained model.
-+ [ ] [Medium] Toronto Face Dataset? (See remark about privacy issues above)
++ [ ] [Enhancement] Toronto Face Dataset? (See remark about privacy issues above)
 + [ ] [Enhancement] Implement affine coupling law
 + [ ] [Enhancement] Allow arbitrary partitions of the input in coupling layers?
