@@ -12,7 +12,7 @@ factorizes, i.e. the output is (y1,y2,...,yK) ~ p(Y) s.t. p(Y) = p_1(Y1) * p_2(Y
 with each individual component's prior distribution coming from a standardized family of
 distributions, i.e. p_i == Gaussian(mu,sigma) for all i in 1..K, or p_i == Logistic(mu,scale).
 """
-def gaussian_nice_loglkhd(h, diag, size_average=True):
+def gaussian_nice_loglkhd(h, diag):
     """
     Definition of log-likelihood function with a Gaussian prior, as in the paper.
     
@@ -20,7 +20,6 @@ def gaussian_nice_loglkhd(h, diag, size_average=True):
     * h: float tensor of shape (N,D). First dimension is batch dim, second dim consists of components
       of a factorized probability distribution.
     * diag: scaling diagonal of shape (D,).
-    * size_average: if True, average over the batch dimension; if False, sum over batch dimension.
 
     Returns:
     * loss: torch float tensor of shape (N,).
