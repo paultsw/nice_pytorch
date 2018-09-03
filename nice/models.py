@@ -8,14 +8,12 @@ from .layers import AdditiveCouplingLayer
 
 def _build_relu_network(latent_dim, hidden_dim, num_layers):
     """Helper function to construct a ReLU network of varying number of layers."""
-    _modules = [ nn.Linear(latent_dim, hidden_dim), nn.ReLU(), nn.BatchNorm1d(hidden_dim) ]
-    for _ in range(num_layers-2):
+    _modules = [ nn.Linear(latent_dim, hidden_dim) ]
+    for _ in range(num_layers):
         _modules.append( nn.Linear(hidden_dim, hidden_dim) )
         _modules.append( nn.ReLU() )
         _modules.append( nn.BatchNorm1d(hidden_dim) )
     _modules.append( nn.Linear(hidden_dim, latent_dim) )
-    _modules.append( nn.ReLU() )
-    _modules.append( nn.BatchNorm1d(latent_dim) )
     return nn.Sequential( *_modules )
     
 
