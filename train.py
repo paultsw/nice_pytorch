@@ -161,8 +161,11 @@ def train(args):
     else:
         nice_loss_fn = GaussianPriorNICELoss(size_average=True)
     def loss_fn(fx):
-        """Compute NICE loss w/r/t a prior and add L1 regularization."""
-        return nice_loss_fn(fx, model.scaling_diag) + args.lmbda*l1_norm(model, include_bias=True)
+        """Compute NICE loss w/r/t a prior and optional L1 regularization."""
+        if args.lmbda == 0.0:
+            return nice_loss_fn(fx, model.scaling_diag)
+        else:
+            return nice_loss_fn(fx, model.scaling_diag) + args.lmbda*l1_norm(model, include_bias=True)
 
     # === train over a number of epochs; perform validation after each:
     for t in range(args.num_epochs):
@@ -174,10 +177,11 @@ def train(args):
             opt.step()
         
         # save model to disk and delete dataloader to save memory:
-        _dev = 'cuda' if CUDA else 'cpu'
-        _fn = "nice.{0}.l_{1}.h_{2}.p_{3}.e_{4}.{5}.pt".format(args.dataset, args.nlayers, args.nhidden, args.prior, t, _dev)
-        torch.save(model.state_dict(), os.path.join(args.savedir, _fn))
-        print(">>> Saved file: {0}".format(_fn))
+        if t % args.save_epoch == 0:
+            _dev = 'cuda' if CUDA else 'cpu'
+            _fn = "nice.{0}.l_{1}.h_{2}.p_{3}.e_{4}.{5}.pt".format(args.dataset, args.nlayers, args.nhidden, args.prior, t, _dev)
+            torch.save(model.state_dict(), os.path.join(args.savedir, _fn))
+            print(">>> Saved file: {0}".format(_fn))
         del dataloader
         
         # perform validation loop:
@@ -223,6 +227,8 @@ if __name__ == '__main__':
                         help="Number of epochs to train on. [1500]")
     parser.add_argument("--batch_size", dest="batch_size", default=16, type=int,
                         help="Number of examples per batch. [16]")
+    parser.add_argument("--save_epoch", dest="save_epoch", default=10, type=int,
+                        help="Number of epochs between saves. [10]")
     parser.add_argument("--savedir", dest='savedir', default="./saved_models",
                         help="Where to save the trained model. [./saved_models]")
     # model settings:
@@ -243,8 +249,8 @@ if __name__ == '__main__':
                         help="Beta2 for ADAM optimizer. [0.01]")
     parser.add_argument("--eps", default=0.0001, dest='eps', type=float,
                         help="Epsilon for ADAM optimizer. [0.0001]")
-    parser.add_argument("--lambda", default=1.0, dest='lmbda', type=float,
-                        help="L1 weight decay coefficient. [1.0]")
+    parser.add_argument("--lambda", default=0.0, dest='lmbda', type=float,
+                        help="L1 weight decay coefficient. [0.0]")
     args = parser.parse_args()
     # ----- run training loop over several epochs & save models for each epoch:
     model = train(args)
