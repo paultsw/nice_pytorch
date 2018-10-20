@@ -29,10 +29,11 @@ import torch.optim as optim
 import torch
 import torch.utils.data as data
 import numpy as np
-# models/losses/image utils:
+# models/losses:
 from nice.models import NICEModel
 from nice.loss import LogisticPriorNICELoss, GaussianPriorNICELoss
-from nice.utils import rescale, l1_norm
+# utilities:
+from utils import rescale, l1_norm
 # python/os utils:
 import argparse
 import os

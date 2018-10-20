@@ -6,7 +6,7 @@ import torchvision
 import torch.distributions as dist
 import numpy as np
 from nice.models import NICEModel
-from nice.utils import unflatten_images
+from utils import unflatten_images
 import argparse
 
 
