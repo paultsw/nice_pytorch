@@ -2,4 +2,4 @@
 __pycache__/
 datasets/*
 saved_models/
-samples.png
+example_images/
