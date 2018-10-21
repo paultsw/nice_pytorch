@@ -52,17 +52,13 @@ def sample(args):
     
     # sample a batch:
     if args.prior == 'logistic':
-        LOGISTIC_LOC = 0.0
-        LOGISTIC_SCALE = (3. / (np.pi**2)) # (sets variance to 1)
-        logistic = dist.TransformedDistribution(
-            dist.Uniform(0.0, 1.0),
-            [dist.SigmoidTransform().inv, dist.AffineTransform(loc=LOGISTIC_LOC, scale=LOGISTIC_SCALE)]
-        )
-        print("[sample] sampling from logistic prior with loc={0:.4f}, scale={1:.4f}.".format(LOGISTIC_LOC,LOGISTIC_SCALE))
-        ys = logistic.sample(torch.Size([args.nrows*args.ncols, input_dim]))
+        print("[sample] sampling from logistic prior.")
+        # X ~ Unif(0,1) implies that {log(X) - log(1-X)} ~ Logistic(0,1)
+        Z = torch.rand(args.nrows*args.ncols, input_dim)
+        ys = torch.log(Z) - torch.log(1-Z)
         xs = nice.inverse(ys)
     if args.prior == 'gaussian':
-        print("[sample] sampling from gaussian prior with loc=0.0, scale=1.0.")
+        print("[sample] sampling from gaussian prior.")
         ys = torch.randn(args.nrows*args.ncols, input_dim)
         xs = nice.inverse(ys)
 
