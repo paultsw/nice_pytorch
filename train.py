@@ -237,7 +237,7 @@ if __name__ == '__main__':
                         help="Number of layers in the nonlinearity. [5]")
     parser.add_argument("--nonlinearity_hiddens", dest='nhidden', default=1000, type=int,
                         help="Hidden size of inner layers of nonlinearity. [1000]")
-    parser.add_argument("--prior", choices=('logistic', 'prior'), default="logistic",
+    parser.add_argument("--prior", choices=('logistic', 'gaussian'), default="logistic",
                         help="Prior distribution of latent space components. [logistic]")
     parser.add_argument("--model_path", dest='model_path', default=None, type=str,
                         help="Continue from pretrained model. [None]")
