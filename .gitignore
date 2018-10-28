@@ -3,3 +3,4 @@ __pycache__/
 datasets/*
 saved_models/
 example_images/
+.ipynb_checkpoints/

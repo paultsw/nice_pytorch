@@ -129,6 +129,7 @@ def load_tfd(train=True, batch_size=1, num_workers=0):
     """Rescale and preprocess TFD dataset."""
     raise NotImplementedError("[load_tfd] Toronto Faces Dataset unsupported right now. Sorry!")
 
+
 # ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
 # Training loop: return a NICE model trained over a number of epochs.
 def train(args):
@@ -203,7 +204,7 @@ def validate(model, dataloader_fn, loss_fn):
     validation_losses = []
     with torch.no_grad():
         for inputs,_ in tqdm(dataloader):
-            validation_losses.append(loss_fn(model(inputs.to(DEVICE)), model.scaling_diag).item())
+            validation_losses.append(loss_fn(model(inputs.to(DEVICE))).item())
     
     # delete dataloader to save memory:
     del dataloader
@@ -246,10 +247,10 @@ if __name__ == '__main__':
                         help="Learning rate for ADAM optimizer. [0.001]")
     parser.add_argument("--beta1", default=0.9,  dest='beta1', type=float,
                         help="Momentum for ADAM optimizer. [0.9]")
-    parser.add_argument("--beta2", default=0.01, dest='beta2', type=float,
-                        help="Beta2 for ADAM optimizer. [0.01]")
-    parser.add_argument("--eps", default=0.0001, dest='eps', type=float,
-                        help="Epsilon for ADAM optimizer. [0.0001]")
+    parser.add_argument("--beta2", default=0.999, dest='beta2', type=float,
+                        help="Beta2 for ADAM optimizer. [0.999]")
+    parser.add_argument("--eps", default=1e-8, dest='eps', type=float,
+                        help="Epsilon for ADAM optimizer. [1e-8]")
     parser.add_argument("--lambda", default=0.0, dest='lmbda', type=float,
                         help="L1 weight decay coefficient. [0.0]")
     args = parser.parse_args()
